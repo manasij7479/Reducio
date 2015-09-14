@@ -1,1 +1,3 @@
-Simple implementation of the Map-Reduce programming model to run on workstations.
+Simple implementation of Map-Reduce as a single C++ header.
+Good for SMP environments.
+Benchmarks coming soon.
