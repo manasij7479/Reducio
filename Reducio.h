@@ -1,6 +1,7 @@
 #include <vector>
 #include <unordered_map>
 #include <functional>
+#include <future>
 namespace reducio {
   template 
   <
@@ -19,7 +20,8 @@ namespace reducio {
     
     typedef std::unordered_map<RKey, RVal> ResultTable;
     typedef std::vector<IVal> ReduceList;
-    typedef std::function<std::pair<RKey, RVal>(IKey, ReduceList)> Reducer;
+    typedef std::pair<RKey, RVal> ReduceResult;
+    typedef std::function<ReduceResult(IKey, ReduceList)> Reducer;
 
     MapReduce(Mapper mapper, Reducer reducer) : M(mapper), R(reducer) {}
 
@@ -27,14 +29,23 @@ namespace reducio {
       
       std::unordered_map<IKey, ReduceList> tempStorage;
 
+      std::vector<std::future<MapResult>> futures;
       for (auto&& pair : input) {
-        for (auto&& mapresult : M(pair.first, pair.second)) {
+      	futures.push_back(std::async(M, pair.first, pair.second));
+      }
+
+      for (auto&& fut : futures) {
+        for (auto&& mapresult : fut.get()) {
           tempStorage[mapresult.first].push_back(mapresult.second);
         }
       }
       ResultTable result;
+      std::vector<std::future<ReduceResult>> rfutures;
       for (auto&& pair : tempStorage) {
-      	result.insert(R(pair.first, pair.second));
+        rfutures.push_back(std::async(R, pair.first, pair.second));
+      }
+      for (auto&& fut : rfutures) {
+      	result.insert(fut.get());
       }
       return result;
     }
